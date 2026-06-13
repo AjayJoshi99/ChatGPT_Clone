@@ -36,7 +36,7 @@ class ChatService:
             conversation_id=conversation_id, role="user", content=message
         )
 
-        history = await self.context_builder.build(conversation_id, user_id=user_id)
+        history = await self.context_builder.build(conversation_id, user_id=user_id, current_message=message)
 
         message_count = await self.message_repository.count_messages(conversation_id)
 

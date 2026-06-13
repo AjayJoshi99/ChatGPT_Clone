@@ -14,15 +14,19 @@ class ContextBuilder:
         self,
         conversation_id: int,
         user_id: int,
+        current_message: str,
     ):
 
         history = []
 
-        memories = await self.long_term_memory_service.get_memories(user_id=user_id)
+        memories = await self.long_term_memory_service.retrieve_relevant_memories(
+            user_id=user_id,
+            query=current_message,
+        )
 
         if memories:
 
-            memory_text = "\n".join([f"- {memory.memory_text}" for memory in memories])
+            memory_text = "\n".join([f"- {memory}" for memory in memories])
 
             history.append(
                 {
@@ -32,8 +36,11 @@ class ContextBuilder:
 
                     {memory_text}
 
-                    Use these facts only when relevant.
-                    Do not mention them unless useful.
+                    Use these facts only when relevant to answering
+                    the current question.
+
+                    Do not mention these memories explicitly unless
+                    they help answer the question.
                     """,
                 }
             )
@@ -46,10 +53,10 @@ class ContextBuilder:
                 {
                     "role": "system",
                     "content": f"""
-                        Conversation Summary:
+                    Conversation Summary:
 
-                        {summary.summary}
-                        """,
+                    {summary.summary}
+                    """,
                 }
             )
 
