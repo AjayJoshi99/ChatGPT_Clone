@@ -5,45 +5,110 @@ from sqlalchemy.orm import Session
 
 from utils.groq_llm import get_groq_client
 from database.connection import get_db
-from pydantic_schemas.chat_schema import MessageSchema
+from pydantic_schemas.chat_schema import MessageSchema, ChatResponse, SendMessageRequest
+from pydantic_schemas.conversation_schema import CreateConversationRequest
 
-
+from repositories.conversation_repository import ConversationRepository
+from repositories.message_repository import MessageRepository
+from repositories.summary_repository import SummaryRepository
+from repositories.long_term_memory_repo import LongTermMemoryRepository
+from services.conversation_service import ConversationService
+from services.groq_services import LLMService
+from services.summary_service import SummaryService
+from services.context_builder import ContextBuilder
+from services.chat_services import ChatService
+from services.long_term_memory_service import LongTermMemoryService
 
 router = APIRouter(
     prefix="/conversations",
     tags=["chat-with-llm"],
 )
 
+def get_conversation_service(db: Annotated[Session, Depends(get_db)]) -> ConversationService:
+    """Provides a configured ConversationService instance."""
+    return ConversationService(db)
+
+def get_chat_service(db: Annotated[Session, Depends(get_db)]) -> ChatService:
+    """Assembles and provides a configured ChatService instance with its full tree of dependencies."""
+    conversation_repo = ConversationRepository(db)
+    message_repo = MessageRepository(db)
+    summary_repo = SummaryRepository(db)
+    memory_repo = LongTermMemoryRepository(db)
+    llm_service = LLMService()
+    
+    long_term_service = LongTermMemoryService(memory_repo, summary_repo, message_repo, llm_service)
+    summary_service = SummaryService(
+        summary_repository=summary_repo, 
+        message_repository=message_repo, 
+        llm_service=llm_service
+    )
+    
+    context_builder = ContextBuilder(
+        summary_repository=summary_repo, 
+        message_repository=message_repo,
+        long_term_memory_service=long_term_service
+    )
+    
+    return ChatService(
+        conversation_repository=conversation_repo,
+        message_repository=message_repo,
+        groq_service=llm_service,
+        summary_service=summary_service,
+        context_builder=context_builder,
+        long_term_memory=long_term_service
+    )
 
 @router.get("/ping-llm")
-async def ping_llm(message : MessageSchema, llm_client : Annotated[ChatGroq, Depends(get_groq_client)]):
+async def ping_llm(
+    message: MessageSchema, 
+    llm_client: Annotated[ChatGroq, Depends(get_groq_client)]
+):
     response = llm_client.invoke(message)
     return response.content
 
 
-@router.post("/")
-async def create_conversation(messages : MessageSchema, llm_client : Annotated[ChatGroq, Depends(get_groq_client)], db: Annotated[Session, Depends(get_db)]):
-    response = llm_client.invoke(messages)
-    # create title for the conversation based on the first message
-    return response.content
+@router.post("")
+async def create_conversation(
+    request: CreateConversationRequest, 
+    conv_service: Annotated[ConversationService, Depends(get_conversation_service)]
+):
+    return await conv_service.create_conversation(user_id="1", title=request.title)
 
 
 @router.get("/")
-async def list_conversations(db: Annotated[Session, Depends(get_db)]):
-    return {"message": "This endpoint is for listing all conversations."}
+async def list_conversations(
+    conv_service: Annotated[ConversationService, Depends(get_conversation_service)]
+):
+    return await conv_service.get_user_conversations(user_id="1")
 
 
 @router.delete("/{conversation_id}")
-async def delete_conversation(conversation_id: int, db: Annotated[Session, Depends(get_db)]):
-    return {"message": "This endpoint is for deleting a specific conversation."}
+async def delete_conversation(
+    conversation_id: int,
+    conv_service: Annotated[ConversationService, Depends(get_conversation_service)]
+):
+    return await conv_service.delete_conversation(
+        conversation_id=conversation_id,
+        user_id=1
+    )
 
 
 @router.get("/{conversation_id}/messages")
-async def get_conversation_messages(conversation_id: int, db: Annotated[Session, Depends(get_db)]):
-    return {"message": "This endpoint is for retrieving messages within a specific conversation."}
+async def get_conversation_messages(
+    conversation_id: int, 
+    chat_service: Annotated[ChatService, Depends(get_chat_service)]
+):
+    return await chat_service.get_messages(conversation_id=conversation_id, user_id=1)
 
-    
+
 @router.post("/{conversation_id}/messages")
-async def chat(conversation_id: int, message: MessageSchema, db: Annotated[Session, Depends(get_db)]):
-    return {"message": "This endpoint is for adding a new message to a specific conversation."}
-
+async def send_message(
+    conversation_id: int,
+    request: SendMessageRequest,
+    chat_service: Annotated[ChatService, Depends(get_chat_service)]
+):
+    return await chat_service.send_message(
+        conversation_id=conversation_id,
+        user_id=1,
+        message=request.message,
+    )
