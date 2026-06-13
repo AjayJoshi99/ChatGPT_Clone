@@ -18,6 +18,8 @@ from services.summary_service import SummaryService
 from services.context_builder import ContextBuilder
 from services.chat_services import ChatService
 from services.long_term_memory_service import LongTermMemoryService
+from services.embedding_services import EmbeddingService
+from services.vector_store_service import VectorStoreService
 
 router = APIRouter(
     prefix="/conversations",
@@ -36,7 +38,11 @@ def get_chat_service(db: Annotated[Session, Depends(get_db)]) -> ChatService:
     memory_repo = LongTermMemoryRepository(db)
     llm_service = LLMService()
     
-    long_term_service = LongTermMemoryService(memory_repo, summary_repo, message_repo, llm_service)
+    embedding_service = EmbeddingService()
+    vector_store_service = VectorStoreService()
+
+    long_term_service = LongTermMemoryService(memory_repo, summary_repo, message_repo, llm_service, embedding_service, vector_store_service)
+
     summary_service = SummaryService(
         summary_repository=summary_repo, 
         message_repository=message_repo, 

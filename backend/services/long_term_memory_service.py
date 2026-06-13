@@ -6,11 +6,15 @@ class LongTermMemoryService:
         summary_repository,
         message_repository,
         llm_service,
+        embedding_service,
+        vector_store_service
     ):
         self.memory_repository = memory_repository
         self.summary_repository = summary_repository
         self.message_repository = message_repository
         self.llm_service = llm_service
+        self.vector_store_service = vector_store_service
+        self.embedding_service = embedding_service
 
     async def extract_and_store(
         self,
@@ -48,10 +52,19 @@ class LongTermMemoryService:
             if exists:
                 continue
 
-            await self.memory_repository.create(
+            memory = await self.memory_repository.create(
                 user_id=user_id,
                 source_conversation_id=conversation_id,
                 memory_text=memory,
+            )
+
+            embedding = self.embedding_service.embed(memory.memory_text)
+
+            await self.vector_store_service.add_memory(
+                memory_id=memory.id,
+                user_id=user_id,
+                memory_text=memory.memory_text,
+                embedding=embedding,
             )
 
     async def get_memories(
@@ -62,3 +75,24 @@ class LongTermMemoryService:
             user_id=user_id,
             limit=20,
         )
+
+    async def retrieve_relevant_memories(
+        self,
+        user_id: int,
+        query: str,
+    ):
+
+        query_embedding = self.embedding_service.embed(query)
+
+        results = await self.vector_store_service.search_memories(
+            user_id=user_id,
+            query_embedding=query_embedding,
+            limit=5,
+        )
+
+        documents = results.get(
+            "documents",
+            [[]],
+        )[0]
+
+        return documents
