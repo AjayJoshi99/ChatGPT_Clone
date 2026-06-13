@@ -11,6 +11,7 @@ from datetime import datetime
 
 from database.connection import Base
 
+
 class User(Base):
     __tablename__ = "users"
 

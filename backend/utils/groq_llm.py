@@ -11,7 +11,7 @@ client = ChatGroq(
     max_retries=2,
 )
 
-async def get_groq_client():
+def get_groq_client():
     return client
 
 
