@@ -31,12 +31,20 @@ class ChatService:
 
         return await self.message_repository.get_by_conversation(conversation_id)
 
-    async def send_message(self, conversation_id: int, user_id: int, message: str, background_tasks: BackgroundTasks):
+    async def send_message(
+        self,
+        conversation_id: int,
+        user_id: int,
+        message: str,
+        background_tasks: BackgroundTasks,
+    ):
         await self.message_repository.create(
             conversation_id=conversation_id, role="user", content=message
         )
 
-        history = await self.context_builder.build(conversation_id, user_id=user_id, current_message=message)
+        history = await self.context_builder.build(
+            conversation_id, user_id=user_id, current_message=message
+        )
 
         message_count = await self.message_repository.count_messages(conversation_id)
 
@@ -63,4 +71,4 @@ class ChatService:
             print(title)
             await self.conversation_repository.update_title(conversation_id, title)
 
-    
+        return {"response": response}
