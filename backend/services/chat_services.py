@@ -1,7 +1,6 @@
 from fastapi import HTTPException, BackgroundTasks
 
 
-
 class ChatService:
 
     def __init__(
@@ -56,10 +55,6 @@ class ChatService:
 
         if message_count > 0 and message_count % 40 == 0:
             await self.summary_service.update_summary(conversation_id)
-            await self.long_term_memory.extract_and_store(
-                user_id=user_id,
-                conversation_id=conversation_id,
-            )
 
         print(message_count)
         if message_count == 2:
