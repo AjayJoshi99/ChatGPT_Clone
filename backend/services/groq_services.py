@@ -83,10 +83,41 @@ class LLMService:
                     {recent_messages}
                     """
 
-        structured_llm = self.llm.with_structured_output(
-            MemoryExtraction
-        )
+        structured_llm = self.llm.with_structured_output(MemoryExtraction)
 
         result = await structured_llm.ainvoke(prompt)
 
         return result.memories
+
+    async def extract_memories_from(
+        self,
+        message: str,
+    ):
+        prompt = f"""
+                Extract long-term user memories.
+
+                Store only:
+                - Name
+                - Preferences
+                - Goals
+                - Skills
+                - Experience
+                - Personal facts useful in future conversations
+
+                Ignore:
+                - Greetings
+                - Temporary requests
+                - Questions
+                - Small talk
+
+                Return JSON list.
+
+                Message:
+                {message}
+                """
+
+        structured_llm = self.client.with_structured_output(MemoryExtraction)
+
+        response = await structured_llm.ainvoke(prompt)
+
+        return response.memories

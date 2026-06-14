@@ -120,3 +120,35 @@ class Memory(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="memories")
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True)
+
+    conversation_id = Column(
+        Integer,
+        ForeignKey("conversations.id"),
+        nullable=False,
+    )
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    file_name = Column(String, nullable=False)
+
+    file_path = Column(String, nullable=False)
+
+    status = Column(
+        String,
+        default="processing",
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+    )

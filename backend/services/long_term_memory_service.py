@@ -3,78 +3,80 @@ class LongTermMemoryService:
     def __init__(
         self,
         memory_repository,
-        summary_repository,
-        message_repository,
         llm_service,
         embedding_service,
-        vector_store_service
+        vector_store_service,
     ):
         self.memory_repository = memory_repository
-        self.summary_repository = summary_repository
-        self.message_repository = message_repository
         self.llm_service = llm_service
-        self.vector_store_service = vector_store_service
         self.embedding_service = embedding_service
+        self.vector_store_service = vector_store_service
 
     async def extract_and_store(
         self,
         user_id: int,
         conversation_id: int,
+        message: str,
     ):
-        summary_obj = await self.summary_repository.get_by_conversation_id(
-            conversation_id
+
+        print(f"Function is called with parameters {user_id}, {conversation_id} {message}")
+        memories = await self.llm_service.extract_memories_from(
+            message=message,
         )
 
-        summary = ""
+        print("Memories retrived ", memories)
+        if not memories:
+            return
 
-        if summary_obj:
-            summary = summary_obj.summary
+        for memory_text in memories:
 
-        messages = await self.message_repository.get_recent_messages(
-            conversation_id,
-            limit=20,
-        )
-
-        recent_text = "\n".join([f"{msg.role}: {msg.content}" for msg in messages])
-
-        memories = await self.llm_service.extract_memories(
-            summary=summary,
-            recent_messages=recent_text,
-        )
-
-        for memory in memories:
-
-            exists = await self.memory_repository.memory_exists(
+            is_duplicate = await self.is_duplicate_memory(
                 user_id=user_id,
-                memory_text=memory,
+                memory_text=memory_text,
             )
 
-            if exists:
+            if is_duplicate:
+                print("mmemory is duplicated", memory_text)
                 continue
 
             memory = await self.memory_repository.create(
                 user_id=user_id,
                 source_conversation_id=conversation_id,
-                memory_text=memory,
+                memory_text=memory_text,
             )
 
-            embedding = self.embedding_service.embed(memory.memory_text)
+            embedding = self.embedding_service.embed(memory_text)
 
             await self.vector_store_service.add_memory(
                 memory_id=memory.id,
                 user_id=user_id,
-                memory_text=memory.memory_text,
+                memory_text=memory_text,
                 embedding=embedding,
             )
 
-    async def get_memories(
+    async def is_duplicate_memory(
         self,
         user_id: int,
+        memory_text: str,
+        similarity_threshold: float = 0.90,
     ):
-        return await self.memory_repository.get_user_memories(
+
+        embedding = self.embedding_service.embed(memory_text)
+
+        results = await self.vector_store_service.search_memories(
             user_id=user_id,
-            limit=20,
+            query_embedding=embedding,
+            limit=1,
         )
+
+        distances = results.get("distances", [[]])[0]
+
+        if not distances:
+            return False
+
+        similarity = 1 - distances[0]
+
+        return similarity >= similarity_threshold
 
     async def retrieve_relevant_memories(
         self,
@@ -90,9 +92,16 @@ class LongTermMemoryService:
             limit=5,
         )
 
-        documents = results.get(
+        return results.get(
             "documents",
             [[]],
         )[0]
 
-        return documents
+    async def get_memories(
+        self,
+        user_id: int,
+    ):
+        return await self.memory_repository.get_user_memories(
+            user_id=user_id,
+            limit=20,
+        )

@@ -5,10 +5,12 @@ class ContextBuilder:
         summary_repository,
         message_repository,
         long_term_memory_service,
+        document_service,
     ):
         self.summary_repository = summary_repository
         self.message_repository = message_repository
         self.long_term_memory_service = long_term_memory_service
+        self.document_service = document_service
 
     async def build(
         self,
@@ -23,6 +25,29 @@ class ContextBuilder:
             user_id=user_id,
             query=current_message,
         )
+
+        relevant_chunks = await self.document_service.retrieve_relevant_chunks(
+            conversation_id=conversation_id,
+            query=current_message,
+        )
+
+        if relevant_chunks:
+
+            document_context = "\n\n".join(relevant_chunks[:3])
+
+            history.append(
+                {
+                    "role": "system",
+                    "content": f"""
+                    Relevant content from uploaded documents:
+
+                    {document_context}
+
+                    Use this information only if it helps answer
+                    the user's question.
+                    """
+                }
+            )
 
         if memories:
 
