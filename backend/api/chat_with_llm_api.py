@@ -160,12 +160,14 @@ async def send_message(
     background_task: BackgroundTasks,
     chat_service: Annotated[ChatService, Depends(get_chat_service)],
 ):
-    return await chat_service.send_message(
+    result =  await chat_service.send_message(
         conversation_id=conversation_id,
         user_id=user["user_id"],
         message=request.message,
         background_tasks=background_task,
     )
+
+    return result
 
 
 @router.post(
