@@ -65,21 +65,6 @@ class VectorStoreService:
             metadatas=metadatas,
         )
 
-    async def add_document_chunks(
-        self,
-        ids: list[str],
-        chunks: list[str],
-        embeddings: list[list[float]],
-        metadatas: list[dict],
-    ):
-
-        self.collection.add(
-            ids=ids,
-            documents=chunks,
-            embeddings=embeddings,
-            metadatas=metadatas,
-        )
-
     async def search_document_chunks(
         self,
         conversation_id: int,

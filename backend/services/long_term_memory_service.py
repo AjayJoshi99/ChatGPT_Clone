@@ -19,7 +19,9 @@ class LongTermMemoryService:
         message: str,
     ):
 
-        print(f"Function is called with parameters {user_id}, {conversation_id} {message}")
+        print(
+            f"Function is called with parameters {user_id}, {conversation_id} {message}"
+        )
         memories = await self.llm_service.extract_memories_from(
             message=message,
         )

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from typing import Annotated
 from sqlalchemy.orm import Session  
+from fastapi.security import OAuth2PasswordRequestForm
 
 from database.connection import get_db
 from services.auth_services import AuthService
@@ -16,5 +17,16 @@ async def register(db_session: Annotated[Session, Depends(get_db)], user: UserRe
 
 
 @auth_router.post("/login")
-async def login(db_session: Annotated[Session, Depends(get_db)], user: UserLogin):
-    return await AuthService(db_session).login_user(user.email, user.password)
+async def login(db_session: Annotated[Session, Depends(get_db)], user: Annotated[OAuth2PasswordRequestForm, Depends()], response: Response,):
+    result =  await AuthService(db_session).login_user(user.username, user.password)
+    response.set_cookie(
+        key="refresh_token",
+        value=result["refresh_token"],
+        httponly=True,       
+        secure=True,         
+        samesite="lax",      
+        max_age=1440 * 60,   
+        path="/auth"
+    )
+    return result
+    

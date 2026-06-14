@@ -17,12 +17,14 @@ from database.connection import get_db
 from pydantic_schemas.chat_schema import MessageSchema, ChatResponse, SendMessageRequest
 from pydantic_schemas.conversation_schema import CreateConversationRequest
 from pydantic_schemas.file_upload_schemas import UploadDocumentResponse
+from core.dependencies import get_current_user
 
 from repositories.conversation_repository import ConversationRepository
 from repositories.message_repository import MessageRepository
 from repositories.summary_repository import SummaryRepository
 from repositories.long_term_memory_repo import LongTermMemoryRepository
 from repositories.document_repository import DocumentRepository
+
 from services.conversation_service import ConversationService
 from services.groq_services import LLMService
 from services.summary_service import SummaryService
@@ -37,6 +39,8 @@ router = APIRouter(
     prefix="/conversations",
     tags=["chat-with-llm"],
 )
+
+CurrentUser = Annotated[dict, Depends(get_current_user)]
 
 
 def get_conversation_service(
@@ -113,39 +117,44 @@ async def ping_llm(
 
 @router.post("")
 async def create_conversation(
+    user: CurrentUser,
     request: CreateConversationRequest,
     conv_service: Annotated[ConversationService, Depends(get_conversation_service)],
 ):
-    return await conv_service.create_conversation(user_id="1", title=request.title)
+    return await conv_service.create_conversation(user_id=user["user_id"], title=request.title)
 
 
 @router.get("/")
 async def list_conversations(
+    user: CurrentUser,
     conv_service: Annotated[ConversationService, Depends(get_conversation_service)],
 ):
-    return await conv_service.get_user_conversations(user_id="1")
+    return await conv_service.get_user_conversations(user_id=user["user_id"])
 
 
 @router.delete("/{conversation_id}")
 async def delete_conversation(
+    user: CurrentUser,
     conversation_id: int,
     conv_service: Annotated[ConversationService, Depends(get_conversation_service)],
 ):
     return await conv_service.delete_conversation(
-        conversation_id=conversation_id, user_id=1
+        conversation_id=conversation_id, user_id=user["user_id"]
     )
 
 
 @router.get("/{conversation_id}/messages")
 async def get_conversation_messages(
+    user: CurrentUser,
     conversation_id: int,
     chat_service: Annotated[ChatService, Depends(get_chat_service)],
 ):
-    return await chat_service.get_messages(conversation_id=conversation_id, user_id=1)
+    return await chat_service.get_messages(conversation_id=conversation_id, user_id=user["user_id"])
 
 
 @router.post("/{conversation_id}/messages")
 async def send_message(
+    user: CurrentUser,
     conversation_id: int,
     request: SendMessageRequest,
     background_task: BackgroundTasks,
@@ -153,7 +162,7 @@ async def send_message(
 ):
     return await chat_service.send_message(
         conversation_id=conversation_id,
-        user_id=1,
+        user_id=user["user_id"],
         message=request.message,
         background_tasks=background_task,
     )
@@ -164,6 +173,7 @@ async def send_message(
     response_model=UploadDocumentResponse,
 )
 async def upload_document(
+    user: CurrentUser,
     conversation_id: int,
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
@@ -202,7 +212,7 @@ async def upload_document(
     try:
         document = await document_service.upload_document(
             conversation_id=conversation_id,
-            user_id=1,
+            user_id=user["user_id"],
             file_name=file.filename,
             file_path=str(temp_file_path),
         )
