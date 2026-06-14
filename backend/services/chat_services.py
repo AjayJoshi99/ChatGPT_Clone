@@ -1,4 +1,5 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, BackgroundTasks
+
 
 
 class ChatService:
@@ -31,7 +32,7 @@ class ChatService:
 
         return await self.message_repository.get_by_conversation(conversation_id)
 
-    async def send_message(self, conversation_id: int, user_id: int, message: str):
+    async def send_message(self, conversation_id: int, user_id: int, message: str, background_tasks: BackgroundTasks):
         await self.message_repository.create(
             conversation_id=conversation_id, role="user", content=message
         )
@@ -44,6 +45,13 @@ class ChatService:
 
         await self.message_repository.create(
             conversation_id=conversation_id, role="assistant", content=response
+        )
+
+        background_tasks.add_task(
+            self.long_term_memory.extract_and_store,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            message=message,
         )
 
         if message_count > 0 and message_count % 40 == 0:
@@ -59,3 +67,5 @@ class ChatService:
 
             print(title)
             await self.conversation_repository.update_title(conversation_id, title)
+
+    

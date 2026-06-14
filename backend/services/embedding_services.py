@@ -12,3 +12,12 @@ class EmbeddingService:
     def embed(self, text: str):
 
         return self.embeddings.embed_query(text)
+    
+    def embed_documents(
+        self,
+        texts: list[str],
+    ):
+
+        return self.embeddings.embed_documents(
+            texts
+        )
