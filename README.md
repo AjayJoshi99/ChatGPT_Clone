@@ -190,7 +190,108 @@ Database provides durability and management.
 Vector store provides semantic retrieval.
 
 ---
+## Prerequisites
 
+Before running the project, ensure the following are installed:
+
+* Python 3.10+
+* Git
+* UV package manager
+
+---
+
+## Installing UV
+
+### Linux / macOS
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+## Clone Repository
+
+```bash
+git clone <repository-url>
+cd chatbot
+```
+
+---
+
+## Create Virtual Environment
+
+```bash
+uv venv
+```
+
+Activate the virtual environment.
+
+### Linux / macOS
+
+```bash
+source .venv/bin/activate
+```
+
+---
+
+## Install Dependencies
+
+If using pyproject.toml:
+
+```bash
+uv sync
+```
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the backend folder.
+
+use **.env.example**
+
+Replace values with your own credentials.
+
+---
+
+## Run Backend
+
+Start the FastAPI server:
+
+```bash
+uv run run.py
+```
+
+Backend will be available at:
+
+```text
+http://localhost:8000
+```
+
+Swagger Documentation:
+
+```text
+http://localhost:8000/docs
+```
+
+---
+
+## Run Frontend
+
+Open a second terminal and activate the virtual environment.
+
+Run Streamlit:
+
+```bash
+uv run streamlit run frontend/app.py
+```
+
+Frontend will be available at:
+
+```text
+http://localhost:8501
+```
+
+---
 
 ## Learning Outcomes
 
